@@ -6,6 +6,12 @@
 
 容悦 E5（OpenWrt）信息屏应用。当前版本 **v1.2**，应用 ID `volkeys`。
 
+## 截图
+
+<img src="screenshots/volkeys.png" alt="音量键功能" width="320">
+
+设备屏幕上的音量键功能页面：选择调节屏幕亮度、亮屏 / 熄屏或调节音量。
+
 ## 安装
 
 1. 下载 [`releases/volkeys-v1.2.tar.gz`](releases/volkeys-v1.2.tar.gz)。
