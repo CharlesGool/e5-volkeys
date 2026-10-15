@@ -1,0 +1,26 @@
+{
+	"id": "volkeys",
+	"api_version": 2,
+	"version": "1.0",
+	"name": { "zh": "音量键功能", "en": "Volume keys" },
+	"description": { "zh": "音量键改为调亮度或亮屏熄屏", "en": "Volume keys for brightness or screen power" },
+	"entry": "index.html",
+	"order": 45,
+	"notifications": true,
+	"settings": [
+		{
+			"id": "mode", "type": "choice", "uci": "e5-plugin-volkeys.settings.mode", "default": "brightness",
+			"label": { "zh": "音量键", "en": "Volume keys" },
+			"options": [
+				{ "value": "brightness", "label": { "zh": "调节屏幕亮度", "en": "Screen brightness" } },
+				{ "value": "power", "label": { "zh": "亮屏 / 熄屏（同电源键）", "en": "Screen on / off (as power)" } },
+				{ "value": "volume", "label": { "zh": "调节音量（原样）", "en": "Volume (unchanged)" } }
+			]
+		},
+		{
+			"id": "step", "type": "number", "uci": "e5-plugin-volkeys.settings.step", "default": "10",
+			"min": 5, "max": 25, "step": 5, "unit": "%",
+			"label": { "zh": "每按一次亮度变化", "en": "Brightness per press" }
+		}
+	]
+}

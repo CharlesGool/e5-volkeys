@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<style>
+	html, body { margin: 0; background: #0b0e13; color: #e8ecf2;
+		font-family: "Noto Sans CJK SC", "DejaVu Sans", sans-serif; user-select: none; cursor: none; }
+	body { padding: 8px; }
+	.card { background: #161b23; border-radius: 10px; padding: 9px 11px; margin-bottom: 7px; }
+	.row { display: flex; justify-content: space-between; align-items: baseline; }
+	.row + .row { margin-top: 6px; }
+	.sub { color: #8b95a5; font-size: 12px; line-height: 1.5; }
+	.val { font-weight: bold; }
+	.good { color: #3ccf7a; } .fair { color: #f2c14b; } .poor { color: #f0625a; }
+	button { font: inherit; color: #e8ecf2; background: #232a35; border: 0; border-radius: 8px;
+		padding: 9px; width: 100%; outline: none; margin-bottom: 6px; }
+	button.on { background: #1f4d36; }
+	button:focus { box-shadow: 0 0 0 2px #fff; }
+</style>
+</head>
+<body>
+<div class="card" id="state"></div>
+<div id="modes"></div>
+<div class="sub" id="note"></div>
+<script src="/sdk/e5.js"></script>
+<script>
+'use strict';
+// The mode, the patch of the screen's app.js; up/down choose, confirm sets.
+// The step is under 高级 -> 音量键功能.
+const $ = (id) => document.getElementById(id);
+const MODES = [
+	{ id: 'brightness', label: { zh: '调节屏幕亮度', en: 'Screen brightness' } },
+	{ id: 'power', label: { zh: '亮屏 / 熄屏（同电源键）', en: 'Screen on / off (as power)' } },
+	{ id: 'volume', label: { zh: '调节音量（原样）', en: 'Volume (unchanged)' } }
+];
+let st = null, focus = 0, busy = false;
+
+function draw() {
+	if (!st) {
+		$('state').innerHTML = `<div class="sub">${e5.t({ zh: '读取中…', en: 'Loading…' })}</div>`;
+		return;
+	}
+	const p = st.patch ?? {};
+	const patch = p.restarting ? [e5.t({ zh: '已安装，屏幕即将重启', en: 'Installed, the screen restarts' }), 'fair']
+		: p.patched && p.current ? [e5.t({ zh: '已生效', en: 'Active' }), 'good']
+		: p.patched ? [e5.t({ zh: '旧版本，正在更新', en: 'Older, updating' }), 'fair']
+		: [e5.t({ zh: '未生效', en: 'Not active' }), 'poor'];
+	$('state').innerHTML =
+		`<div class="row"><span>${e5.t({ zh: '按键补丁', en: 'Key patch' })}</span><span class="val ${patch[1]}">${patch[0]}</span></div>` +
+		(p.error ? `<div class="sub">${String(p.error).replace(/[&<>]/g, '')}</div>` : '');
+	$('modes').innerHTML = MODES.map((m, i) =>
+		`<button data-i="${i}" class="${st.mode == m.id ? 'on' : ''}">${st.mode == m.id ? '● ' : ''}${e5.t(m.label)}</button>`).join('');
+	$('modes').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => choose(+b.dataset.i)));
+	const btn = $('modes').querySelectorAll('button')[focus];
+	if (btn) btn.focus();
+	$('note').textContent = e5.t({
+		zh: `亮度模式每按一次变化 ${st.step}%，屏幕熄灭时第一下只点亮屏幕。通话中音量键始终调通话音量。`,
+		en: `Brightness mode: ${st.step}% a press; with the screen dark the first press only wakes it. During a call they stay volume keys.`
+	});
+}
+
+async function load() {
+	try { st = await e5.api('/status'); } catch (e) { e5.toast(e.message); }
+	draw();
+}
+
+async function choose(i) {
+	if (busy) return;
+	busy = true;
+	focus = i;
+	try { st = await e5.api('/mode', { body: { mode: MODES[i].id } }); }
+	catch (e) { e5.toast(e.message); }
+	busy = false;
+	draw();
+}
+
+e5.onKey((k) => {
+	if (k.kind == 'up' || k.kind == 'down') {
+		focus = (focus + (k.kind == 'down' ? 1 : MODES.length - 1)) % MODES.length;
+		draw();
+		return true;
+	}
+	if (k.kind == 'ok') { choose(focus); return true; }
+	return false;
+});
+draw();
+load().then(() => { focus = Math.max(0, MODES.findIndex((m) => m.id == st?.mode)); draw(); });
+</script>
+</body>
+</html>
