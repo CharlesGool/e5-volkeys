@@ -5,12 +5,14 @@
 // During a call, or with the app removed (no /mode), they stay volume keys.
 let volkeysMode = null, volkeysAt = -Infinity, volkeysLast = -Infinity, volkeysRepeat = false;
 // whether this press is a held key's repeat: volumeKey(step) is not told, so
-// it is taken from the event first (these listeners are added before the
-// screen's own, for its keys and for those a plugin frame passes on)
-document.addEventListener('keydown', (e) => { volkeysRepeat = !!e.repeat; });
+// it is taken from the event first.  Capturing, as the screen's own keydown
+// listener is: these are added before it, so they run before it (a bubbling
+// one ran after, and volumeKey saw the previous key's flag).  The same for
+// the keys a plugin frame passes on.
+document.addEventListener('keydown', (e) => { volkeysRepeat = !!e.repeat; }, true);
 window.addEventListener('message', (e) => {
 	if (e.data && typeof e.data == 'object' && e.data.e5 === 'key') volkeysRepeat = !!e.data.repeat;
-});
+}, true);
 async function volkeysGet() {
 	if (volkeysMode && performance.now() - volkeysAt < 3000) return volkeysMode;
 	try {
@@ -34,7 +36,12 @@ async function volumeKey(step) {
 	if (m.mode === 'brightness') {
 		if (repeat && now - volkeysLast < 150) return;   // held down: a step per 150 ms
 		volkeysLast = now;
-		if (blank) { if (!repeat) setBlank(false); return; }   // dark: the first press only wakes it
+		// dark: the first press only wakes it -- volume + only, when volume −
+		// at the lowest level is what turns it off
+		if (blank) { if (!repeat && (step > 0 || m.off_at_min === false)) setBlank(false); return; }
+		// down once more at the lowest level (stepBrightness stops at 10): the
+		// screen off, as the power key -- a separate press, not a held one
+		if (step < 0 && !repeat && m.off_at_min !== false && brightness <= 10) { setBlank(true); return; }
 		resetIdle();
 		// (the level is set and saved before its page re-renders; the bar
 		// below shows whatever that rendering does)

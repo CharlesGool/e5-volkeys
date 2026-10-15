@@ -32,7 +32,8 @@ return function(ctx) {
 		if (index(MODES, mode) < 0) mode = 'brightness';
 		let step = int(c.get(CFG, 'settings', 'step') ?? '10');
 		if (step < 5 || step > 25) step = 10;
-		return { mode, step };
+		let off_at_min = (c.get(CFG, 'settings', 'off_at_min') ?? '1') != '0';
+		return { mode, step, off_at_min };
 	}
 
 	// app.js without our block, volumeKeyOrig back to volumeKey

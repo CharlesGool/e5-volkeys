@@ -1,7 +1,7 @@
 {
 	"id": "volkeys",
 	"api_version": 2,
-	"version": "1.0",
+	"version": "1.1",
 	"name": { "zh": "音量键功能", "en": "Volume keys" },
 	"description": { "zh": "音量键改为调亮度或亮屏熄屏", "en": "Volume keys for brightness or screen power" },
 	"entry": "index.html",
@@ -21,6 +21,10 @@
 			"id": "step", "type": "number", "uci": "e5-plugin-volkeys.settings.step", "default": "10",
 			"min": 5, "max": 25, "step": 5, "unit": "%",
 			"label": { "zh": "每按一次亮度变化", "en": "Brightness per press" }
+		},
+		{
+			"id": "off_at_min", "type": "toggle", "uci": "e5-plugin-volkeys.settings.off_at_min", "default": "1",
+			"label": { "zh": "最低亮度再按音量 − 熄屏", "en": "Volume − at lowest turns screen off" }
 		}
 	]
 }

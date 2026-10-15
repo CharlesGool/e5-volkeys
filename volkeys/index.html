@@ -55,8 +55,10 @@ function draw() {
 	const btn = $('modes').querySelectorAll('button')[focus];
 	if (btn) btn.focus();
 	$('note').textContent = e5.t({
-		zh: `亮度模式每按一次变化 ${st.step}%，屏幕熄灭时第一下只点亮屏幕。通话中音量键始终调通话音量。`,
-		en: `Brightness mode: ${st.step}% a press; with the screen dark the first press only wakes it. During a call they stay volume keys.`
+		zh: `亮度模式每按一次变化 ${st.step}%，屏幕熄灭时第一下只点亮屏幕` +
+			(st.off_at_min ? '；最低亮度时再按一下音量 − 熄屏' : '') + '。通话中音量键始终调通话音量。',
+		en: `Brightness mode: ${st.step}% a press; with the screen dark the first press only wakes it` +
+			(st.off_at_min ? '; volume − once more at the lowest level turns the screen off' : '') + '. During a call they stay volume keys.'
 	});
 }
 
