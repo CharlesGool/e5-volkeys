@@ -48,7 +48,11 @@ function draw() {
 		: [e5.t({ zh: '未生效', en: 'Not active' }), 'poor'];
 	$('state').innerHTML =
 		`<div class="row"><span>${e5.t({ zh: '按键补丁', en: 'Key patch' })}</span><span class="val ${patch[1]}">${patch[0]}</span></div>` +
-		(p.error ? `<div class="sub">${String(p.error).replace(/[&<>]/g, '')}</div>` : '');
+		(p.error ? `<div class="sub">${String(p.error).replace(/[&<>]/g, '')}</div>` : '') +
+		(st.off_at_min && st.keys ? `<div class="row"><span>${e5.t({ zh: '熄屏时屏蔽其他按键', en: 'Other keys when cut off' })}</span>` +
+			(st.keys.available ? `<span class="val good">${e5.t({ zh: '支持', en: 'Masked' })}</span></div>`
+				: `<span class="val fair">${e5.t({ zh: '本内核不支持', en: 'Not on this kernel' })}</span></div>` +
+					`<div class="sub">${String(st.keys.release).replace(/[&<>]/g, '')}</div>`) : '');
 	$('modes').innerHTML = MODES.map((m, i) =>
 		`<button data-i="${i}" class="${st.mode == m.id ? 'on' : ''}">${st.mode == m.id ? '● ' : ''}${e5.t(m.label)}</button>`).join('');
 	$('modes').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => choose(+b.dataset.i)));
@@ -56,9 +60,11 @@ function draw() {
 	if (btn) btn.focus();
 	$('note').textContent = e5.t({
 		zh: `亮度模式每按一次变化 ${st.step}%，屏幕熄灭时第一下只点亮屏幕` +
-			(st.off_at_min ? '；最低亮度时再按一下音量 − 关闭屏幕，期间任何按键都不亮屏，按音量 + 恢复' : '') + '。通话中音量键始终调通话音量。',
+			(st.off_at_min ? '；最低亮度时再按一下音量 − 关闭屏幕，期间任何按键都不亮屏' +
+				(st.keys?.available ? '、也不唤醒深度休眠' : '') + '，按音量 + 恢复' : '') + '。通话中音量键始终调通话音量。',
 		en: `Brightness mode: ${st.step}% a press; with the screen dark the first press only wakes it` +
-			(st.off_at_min ? '; volume − once more at the lowest level cuts the screen off until volume +' : '') + '. During a call they stay volume keys.'
+			(st.off_at_min ? '; volume − once more at the lowest level cuts the screen off until volume +' +
+				(st.keys?.available ? ', and no other key wakes the system meanwhile' : '') : '') + '. During a call they stay volume keys.'
 	});
 }
 

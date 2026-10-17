@@ -13,6 +13,24 @@ document.addEventListener('keydown', (e) => { volkeysRepeat = !!e.repeat; }, tru
 window.addEventListener('message', (e) => {
 	if (e.data && typeof e.data == 'object' && e.data.e5 === 'key') volkeysRepeat = !!e.data.repeat;
 }, true);
+// the other keys masked (POST /cut) while the screen is cut off: they neither
+// reach the screen nor wake the system from deep sleep; unmasked at every start
+// too, as a screen that restarted has no cut-off screen
+function volkeysKeys(on) {
+	fetch('/api/plugins/volkeys/cut', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ on }) }).catch(() => {});
+}
+volkeysKeys(false);
+// the screen back from the cut-off, at the lowest level
+function volkeysUncut() {
+	volkeysCut = false;
+	volkeysKeys(false);
+	locked = false;
+	setBlank(false);
+	applyTouch();
+	toApp({ e5: 'blank', on: blank });
+	toIme({ e5: 'blank', on: blank });
+}
 async function volkeysGet() {
 	if (volkeysMode && performance.now() - volkeysAt < 3000) return volkeysMode;
 	try {
@@ -27,6 +45,12 @@ async function volkeysGet() {
 async function volumeKey(step) {
 	if (T551MCalls.active()) return volumeKeyOrig(step);
 	const repeat = volkeysRepeat, now = performance.now();   // (before any await)
+	// cut off by us: volume + gives the screen back, whatever the mode is now
+	// and whether or not /mode answers (just woken from deep sleep)
+	if (volkeysCut) {
+		if (step > 0 && !repeat) volkeysUncut();
+		return;
+	}
 	const m = await volkeysGet();
 	if (m.mode === 'power') {
 		if (repeat) return;                         // held down: one press
@@ -38,20 +62,7 @@ async function volumeKey(step) {
 		volkeysLast = now;
 		if (blank) {
 			if (repeat) return;
-			if (locked) {
-				// cut off by us: volume + gives the screen back, at the lowest
-				// level (the lock's own power-then-* does too); a lock the user
-				// set with power-then-* is theirs, and stays
-				if (volkeysCut && step > 0) {
-					volkeysCut = false;
-					locked = false;
-					setBlank(false);
-					applyTouch();
-					toApp({ e5: 'blank', on: blank });
-					toIme({ e5: 'blank', on: blank });
-				}
-				return;
-			}
+			if (locked) return;     // the lock the user set with power-then-*: theirs
 			// dark: the first press only wakes it -- volume + only, when volume −
 			// at the lowest level is what cuts it off
 			if (step > 0 || m.off_at_min === false) setBlank(false);
@@ -59,11 +70,12 @@ async function volumeKey(step) {
 		}
 		// Down once more at the lowest level (stepBrightness stops at 10): the
 		// screen cut off -- the screen's key lock (setLocked: dark, no key,
-		// touch or new message lights it, the motor says so) -- until volume +.
-		// A separate press, not a held one.
+		// touch or new message lights it, the motor says so), the other keys
+		// masked -- until volume +.  A separate press, not a held one.
 		if (step < 0 && !repeat && m.off_at_min !== false && brightness <= 10) {
 			volkeysCut = true;
 			setLocked(true);
+			volkeysKeys(true);
 			return;
 		}
 		resetIdle();

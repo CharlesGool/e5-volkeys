@@ -1,7 +1,7 @@
 {
 	"id": "volkeys",
 	"api_version": 2,
-	"version": "1.2",
+	"version": "1.3",
 	"name": { "zh": "音量键功能", "en": "Volume keys" },
 	"description": { "zh": "音量键改为调亮度或亮屏熄屏", "en": "Volume keys for brightness or screen power" },
 	"entry": "index.html",
@@ -25,7 +25,7 @@
 		{
 			"id": "off_at_min", "type": "toggle", "uci": "e5-plugin-volkeys.settings.off_at_min", "default": "1",
 			"label": { "zh": "最低亮度再按音量 − 关闭屏幕", "en": "Volume − at lowest cuts the screen off" },
-			"note": { "zh": "关闭后任何按键、触摸、短信都不亮屏，只有音量 + 恢复", "en": "No key, touch or message lights it; volume + brings it back" }
+			"note": { "zh": "关闭后任何按键、触摸、短信都不亮屏，其他按键也不唤醒深度休眠，只有音量 + 恢复", "en": "No key, touch or message lights it, and no other key wakes the system from deep sleep; volume + brings it back" }
 		}
 	]
 }

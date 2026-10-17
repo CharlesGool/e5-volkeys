@@ -6,15 +6,22 @@
 // the screen restarts once after each patch, to load it.  Removing the app
 // leaves the keys as volume keys (no /mode) until the next update.
 //
+// The screen cut off (volume − at the lowest level): the other keys masked at
+// their interrupt controller (keywake.sh, e5_keywake.ko), so that they do not
+// wake the system from deep sleep either.  Volume + gives the screen back and
+// unmasks them; so does a screen start (the patched app.js says "off"), and the
+// notification poll when it finds the screen lit with them still masked.
+//
 //   GET  /mode            {mode, step}, for the patched volumeKey
-//   GET  /status          the mode, the step, the patch
+//   GET  /status          the mode, the step, the patch, the key mask
 //   POST /mode            {"mode": "brightness"|"power"|"volume"}
+//   POST /cut             {"on": true|false}: the keys masked or not
 //   POST /unpatch         app.js as it came, the screen restarted
-//   GET  /notifications   (none: only the patch check, once a minute)
+//   GET  /notifications   (none: the patch check and the mask check, once a minute)
 
 'use strict';
 
-import { readfile, writefile, rename, stat } from 'fs';
+import { readfile, writefile, rename, stat, lsdir } from 'fs';
 
 const DIR = '/etc/e5-infoscreen/plugins/volkeys';
 const APP = '/usr/share/e5-infoscreen/www/app.js';
@@ -24,6 +31,8 @@ const RENAMED = 'async function volumeKeyOrig(step) {';
 const BEGIN = '/* BEGIN e5-volkeys';
 const END = '/* END e5-volkeys */\n';
 const MODES = [ 'brightness', 'power', 'volume' ];
+const MASKED = '/sys/module/e5_keywake/parameters/masked';
+const MARK = '/var/run/volkeys.cut';
 
 return function(ctx) {
 	function settings() {
@@ -86,8 +95,41 @@ return function(ctx) {
 		return { patched: true, current: true, restarting: true };
 	}
 
+	// the key mask: whether this kernel has the module, which interrupts are masked
+	function keys_state() {
+		let release = trim(readfile('/proc/sys/kernel/osrelease') ?? '');
+		let masked = trim(readfile(MASKED) ?? '');
+		return { available: !!stat(`${DIR}/keywake/${release}.ko`), masked: masked != '', release };
+	}
+
+	function cut(on) {
+		if (on)     // (detached: it waits for the keys to be released)
+			ctx.run(`setsid sh '${DIR}/keywake.sh' on >/dev/null 2>&1 &`);
+		else
+			ctx.run(`sh '${DIR}/keywake.sh' off >/dev/null 2>&1`);
+	}
+
+	function screen_lit() {
+		for (let d in lsdir('/sys/class/backlight') ?? [])
+			if (int(trim(readfile(`/sys/class/backlight/${d}/brightness`) ?? '0')) > 0)
+				return true;
+		return false;
+	}
+
+	// masked, and the screen lit for more than a moment: not cut off any more
+	// (a screen that restarted, a lost "off")
+	function check_keys() {
+		if (trim(readfile(MASKED) ?? '') == '' || !screen_lit())
+			return;
+		let m = stat(MARK);
+		if (m && time() - m.mtime < 10)
+			return;
+		ctx.log('keys masked with the screen lit: unmasked');
+		cut(false);
+	}
+
 	function status() {
-		return { ...settings(), patch: patch_state() };
+		return { ...settings(), patch: patch_state(), keys: keys_state() };
 	}
 
 	return {
@@ -96,6 +138,7 @@ return function(ctx) {
 		},
 		'GET /status': function(req) {
 			ensure_patch();
+			check_keys();
 			return status();
 		},
 		'POST /mode': function(req) {
@@ -111,7 +154,15 @@ return function(ctx) {
 			c.commit(CFG);
 			return status();
 		},
+		'POST /cut': function(req) {
+			let on = req.body?.on;
+			if (type(on) != 'bool')
+				return { status: 400, type: 'application/json', body: '{"error":"on: true or false"}' };
+			cut(on);
+			return { keys: keys_state() };
+		},
 		'POST /unpatch': function(req) {
+			cut(false);
 			let src = readfile(APP);
 			if (src == null || index(src, BEGIN) < 0)
 				return status();
@@ -126,6 +177,7 @@ return function(ctx) {
 			if (!ctx.state_get('checked', 60)) {
 				ctx.state_put('checked', { at: time() });
 				ensure_patch();
+				check_keys();
 			}
 			return { notifications: [] };
 		}
