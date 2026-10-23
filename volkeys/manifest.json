@@ -1,7 +1,7 @@
 {
 	"id": "volkeys",
 	"api_version": 2,
-	"version": "1.5",
+	"version": "1.6",
 	"name": { "zh": "音量键功能", "en": "Volume keys" },
 	"description": { "zh": "音量键改为调亮度或亮屏熄屏", "en": "Volume keys for brightness or screen power" },
 	"entry": "index.html",

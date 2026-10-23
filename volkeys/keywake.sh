@@ -1,13 +1,17 @@
 #!/bin/sh
-# The keys other than volume +, masked at their interrupt controller while
-# volkeys has the screen cut off (volume − at the lowest level): no event
-# reaches the screen, and they no longer wake the system from deep sleep
-# (热点省电's).  keywake/<kernel release>.ko is e5_keywake (its source:
+# The keys other than volume +, masked at their interrupt controller while the
+# system is in deep sleep (热点省电's) with the screen cut off by volkeys (volume −
+# at the lowest level): only volume + wakes it then.  Awake -- the hotspot on,
+# say -- nothing is masked (v1.6): the keys do what their settings say (the side
+# key switches the hotspot, ...).  keywake/<kernel release>.ko is e5_keywake (its source:
 # keywake/ in the app's repository); with no module for the running kernel
 # the keys stay as they are.
 #
-#   keywake.sh on    mask them, once none of them is held (up to 3 s)
-#   keywake.sh off   unmask them
+#   keywake.sh on        the screen cut off: the mark, the module loaded
+#   keywake.sh off       the cut ended: the mark gone, nothing masked
+#   keywake.sh suspend   just before a deep sleep (sleep.sh): with the screen cut
+#                        off and none of the keys held, mask them
+#   keywake.sh resume    right after it: nothing masked
 
 DIR=/etc/e5-infoscreen/plugins/volkeys
 KO=$DIR/keywake/$(uname -r).ko
@@ -50,20 +54,29 @@ on)
 	touch "$MARK"
 	[ -f "$KO" ] || exit 2
 	[ -d /sys/module/e5_keywake ] || insmod "$KO" || exit 3
-	irqs=$(keys | cut -d' ' -f1 | tr '\n' ',')
-	[ -n "$irqs" ] || exit 4
-	i=0
-	while held && [ $i -lt 3 ]; do sleep 1; i=$((i + 1)); done
-	# (not if "off" came meanwhile: it removes the mark first)
-	( flock 9; [ -f "$MARK" ] && echo "${irqs%,}" > "$P" ) 9>"$LOCK"
+	# (masked for a deep sleep only: see suspend; an older version's mask goes)
+	[ -e "$P" ] && ( flock 9; echo > "$P" ) 9>"$LOCK"
 	;;
 off)
 	rm -f "$MARK"
 	[ -e "$P" ] || exit 0
 	( flock 9; echo > "$P" ) 9>"$LOCK"
 	;;
+suspend)
+	[ -f "$MARK" ] && [ -f "$KO" ] || exit 0
+	[ -d /sys/module/e5_keywake ] || insmod "$KO" || exit 3
+	irqs=$(keys | cut -d' ' -f1 | tr '\n' ',')
+	[ -n "$irqs" ] || exit 4
+	# (a key masked while held is never seen released: not this time then)
+	held && exit 5
+	( flock 9; [ -f "$MARK" ] && echo "${irqs%,}" > "$P" ) 9>"$LOCK"
+	;;
+resume)
+	[ -e "$P" ] || exit 0
+	( flock 9; echo > "$P" ) 9>"$LOCK"
+	;;
 *)
-	echo "usage: $0 on|off" >&2
+	echo "usage: $0 on|off|suspend|resume" >&2
 	exit 1
 	;;
 esac
