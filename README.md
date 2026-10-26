@@ -4,7 +4,7 @@
 
 *Volume keys for brightness or screen power*
 
-容悦 E5（OpenWrt）信息屏应用。当前版本 **v1.7**，应用 ID `volkeys`。
+容悦 E5（OpenWrt）信息屏应用。当前版本 **v1.8**，应用 ID `volkeys`。
 
 ## 截图
 
@@ -14,7 +14,7 @@
 
 ## 安装
 
-1. 下载 [`releases/volkeys-v1.7.tar.gz`](releases/volkeys-v1.7.tar.gz)。
+1. 下载 [`releases/volkeys-v1.8.tar.gz`](releases/volkeys-v1.8.tar.gz)。
 2. 在信息屏的「应用管理」中安装（LuCI：服务 → 信息屏应用 → 应用管理）。
 3. 安装后文件位于设备上的 `/etc/e5-infoscreen/plugins/volkeys/`。
 
@@ -33,7 +33,7 @@
 
 - 这些按键是 gpio-keys，但设备树里没有 `linux,can-disable`，`disabled_keys` 用不了；即便能用，`disable_irq()` 是惰性的，而电源键、音量 + 在 PMIC 的 EIC 上（嵌套中断，从不在进入时屏蔽），照样会触发 PMIC 中断唤醒系统。
 - 所以带了一个小内核模块 `e5_keywake`（源码 [`keywake/`](keywake/)），用 `IRQ_DISABLE_UNLAZY` 关中断，立即在控制器上屏蔽；`keywake.sh` 负责加载、等按键松开后屏蔽、恢复时解除。
-- 模块按内核版本放在 `volkeys/keywake/<uname -r>.ko`，目前有 **e5-sleep4**（`6.18.54-e5-sleep4-00072-g020b970e351e-dirty`）、**e5-sleep5**（`6.18.54-e5-sleep5-charles-00072-g020b970e351e-dirty`）、**e5-sleep8**（`6.18.54-e5-sleep8-charles-00072-g020b970e351e-dirty`）、**e5-sleep12**（`6.18.54-e5-sleep12-charles-00072-g020b970e351e-dirty`）和 **e5-sleep13**（`6.18.54-e5-sleep13-charles-00072-g020b970e351e-dirty`）五个内核；其他内核上这项功能不生效（应用页面会显示「本内核不支持」），其余照旧。
+- 模块按内核版本放在 `volkeys/keywake/<uname -r>.ko`，目前有 **e5-sleep4**（`6.18.54-e5-sleep4-00072-g020b970e351e-dirty`）、**e5-sleep5**（`6.18.54-e5-sleep5-charles-00072-g020b970e351e-dirty`）、**e5-sleep8**（`6.18.54-e5-sleep8-charles-00072-g020b970e351e-dirty`）、**e5-sleep12**（`6.18.54-e5-sleep12-charles-00072-g020b970e351e-dirty`）、**e5-sleep13**（`6.18.54-e5-sleep13-charles-00072-g020b970e351e-dirty`）和 **e5-sleep14**（`6.18.54-e5-sleep14-charles`）六个内核；其他内核上这项功能不生效（应用页面会显示「本内核不支持」），其余照旧。
 - 安全措施：屏幕每次启动都会解除屏蔽；每分钟检查一次，屏幕亮着却仍在屏蔽就解除；卸载补丁（`POST /unpatch`）也会解除；重启后自然解除。
 - 实测（2026-10-17）：屏蔽期间按电源键，PMIC 中断计数不变；拔线熄屏休眠 106 秒，期间多次按电源键、热点键、音量 − 都没有唤醒，最后只被音量 + 唤醒（`woken by key (… Volume_Up_Key …)`）。
 
@@ -56,7 +56,8 @@ llvm-strip --strip-debug -o volkeys/keywake/$(cat obj-sleep4/include/config/kern
 
 ## 版本
 
-- [v1.7](releases/volkeys-v1.7.tar.gz)（当前）：增加 e5-sleep13 内核的 e5_keywake 模块
+- [v1.8](releases/volkeys-v1.8.tar.gz)（当前）：增加 e5-sleep14 内核的 e5_keywake 模块
+- [v1.7](releases/volkeys-v1.7.tar.gz)：增加 e5-sleep13 内核的 e5_keywake 模块
 - [v1.6](releases/volkeys-v1.6.tar.gz)：音量 − 关屏时**只在深度休眠期间**屏蔽其他按键（由热点省电 3.4 在休眠前后调用 `keywake.sh suspend / resume`）；没在深度休眠时（比如热点开着）不屏蔽，按键照各自的设置工作，长按侧键仍能开关热点。增加 e5-sleep12 内核的 e5_keywake 模块
 - [v1.5](releases/volkeys-v1.5.tar.gz)：增加 e5-sleep8 内核的 e5_keywake 模块
 - [v1.4](releases/volkeys-v1.4.tar.gz)：增加 e5-sleep5 内核的 e5_keywake 模块
